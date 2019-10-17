@@ -1,5 +1,5 @@
 from telegram.ext import Updater
-from paser import get_flats
+from parser import get_flats
 import datetime
 import logging
 
