@@ -16,4 +16,4 @@
 /start
 ```
 
-<blockquote class="imgur-embed-pub" lang="en" data-id="17lUl3F"><a href="//imgur.com/17lUl3F"></a></blockquote><script async src="//s.imgur.com/min/embed.js" charset="utf-8"></script>
+<img src="https://i.imgur.com/17lUl3F.jpg" width="400" />
