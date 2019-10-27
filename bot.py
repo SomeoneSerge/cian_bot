@@ -157,28 +157,32 @@ class CianBot:
 
     def send_messages(self, context):
         while len(self.scheduled_messages) > 0:
-            msg = self.scheduled_messages.popleft()
-            logger.debug(f'Notifying {msg["chat_id"]} about: {msg["text"]}')
+            try:
+                msg = self.scheduled_messages.popleft()
+                logger.debug(f'Notifying {msg["chat_id"]} about: {msg["text"]}')
 
-            sent_msg = None
-            # Aye, that's a ton of shitcode
-            if 'photos' in msg:
-                sent_msg = context.bot.send_media_group(msg['chat_id'],
-                                                        msg['photos'],
-                                                        caption=msg['text'])[0]
-            elif 'photo' in msg:
-                sent_msg = context.bot.send_photo(msg['chat_id'],
-                                                  msg['photo'],
-                                                  caption=msg['text'])
-            else:
-                sent_msg = context.bot.send_message(msg['chat_id'],
-                                                    msg['text'])
-            if sent_msg is None:
-                logger.error(
-                    f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
-                )
-            elif 'document' in msg:
-                sent_msg.reply_document(msg['document'])
+                sent_msg = None
+                # Aye, that's a ton of shitcode
+                if 'photos' in msg:
+                    sent_msg = context.bot.send_media_group(msg['chat_id'],
+                                                            msg['photos'],
+                                                            caption=msg['text'])[0]
+                elif 'photo' in msg:
+                    sent_msg = context.bot.send_photo(msg['chat_id'],
+                                                      msg['photo'],
+                                                      caption=msg['text'])
+                else:
+                    sent_msg = context.bot.send_message(msg['chat_id'],
+                                                        msg['text'])
+                if sent_msg is None:
+                    logger.error(
+                        f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
+                    )
+                    self.scheduled_messages.append(msg)
+                elif 'document' in msg:
+                    sent_msg.reply_document(msg['document'])
+            except Exception e:
+                logger.error(f'send_messages: {e}')
 
     def fetch_messages(self, update, context):
         logger.info(f'{update.message.chat_id} asks for messages')
