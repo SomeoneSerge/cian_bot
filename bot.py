@@ -160,6 +160,7 @@ class CianBot:
             self.viewed[u].add(flat.id)
 
     def send_messages(self, context):
+        logger.info(f'send_message: about to send {len(self.scheduled_messages)} messages')
         while len(self.scheduled_messages) > 0:
             try:
                 msg = self.scheduled_messages.popleft()
@@ -220,7 +221,6 @@ class CianBot:
                     for f in flats:
                         self.handle_new_flat(f)
                     self.send_messages(context)
-                    logger.info('fetch_cian: messages sent')
                 except Exception as e:
                     logger.fatal(
                         f'fetch_cian: failed fetching flats from {url}; error: {e}'
