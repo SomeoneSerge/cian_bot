@@ -27,7 +27,7 @@ log_to_stdout.setLevel(logging.INFO)
 logger.addHandler(log_to_stdout)
 
 SAVE_FILE = 'save.json'
-N_PHOTOS_MAX = 5
+N_PHOTOS_MAX = 4
 
 METRO = [
     'Достоевская', 'Проспект Мира', 'Сухаревская', 'Цветной бульвар',
@@ -185,11 +185,12 @@ class CianBot:
                     sent_msg.reply_text(msg['document'])
                 if 'photos' in msg and len(
                         msg['photos']) >= 2 and sent_msg is not None:
-                    context.bot.send_media_group(msg['chat_id'], [
+                    sent_msg.reply_media_group(msg['chat_id'], [
                         InputMediaPhoto(p)
                         for p in msg['photos'][:N_PHOTOS_MAX]
                     ],
-                                                 caption=msg['text'])
+                                               caption=msg['text'],
+                                               quote=True)
                 if sent_msg is None:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
