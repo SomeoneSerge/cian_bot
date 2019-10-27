@@ -115,23 +115,27 @@ class CianBot:
         logger.info(f'{update.message.chat_id} connected')
 
     def flat_to_message(self, flat):
-        text = '.\n'.join([
-            f'{flat.href}',
-            ', '.join([
-                f'{k} {getattr(flat, k.lower())}'
-                for k in ['Price', 'deposit', 'fee', 'bonus']
-                if getattr(flat, k.lower())
-            ]),
-            f'{flat.bedrooms} rooms',
-            f'{flat.metros}',
-            f'{flat.address}',
-            ' '.join(cian_parser.js_offer_to_phones(flat.json)),
-        ])
-        msg = dict(text=text)
-        if len(flat.photos) > 0:
-            msg['photos'] = flat.photos
-            msg['document'] = flat.pdf_link
-        return msg
+        try:
+            text = '.\n'.join([
+                f'{flat.href}',
+                ', '.join([
+                    f'{k} {getattr(flat, k.lower())}'
+                    for k in ['Price', 'deposit', 'fee', 'bonus']
+                    if getattr(flat, k.lower())
+                ]),
+                f'{flat.bedrooms} rooms',
+                f'{flat.metros}',
+                f'{flat.address}',
+                ' '.join(cian_parser.js_offer_to_phones(flat.json)),
+            ])
+            msg = dict(text=text)
+            if len(flat.photos) > 0:
+                msg['photos'] = flat.photos
+                msg['document'] = flat.pdf_link
+            return msg
+        except Exception as e:
+            logger.error(f'flat_to_msg: {e}')
+            raise e
 
     def flat_ok(self, flat):
         for f in self.filters:
@@ -159,21 +163,21 @@ class CianBot:
         while len(self.scheduled_messages) > 0:
             try:
                 msg = self.scheduled_messages.popleft()
-                logger.debug(f'Notifying {msg["chat_id"]} about: {msg["text"]}')
+                logger.debug(
+                    f'Notifying {msg["chat_id"]} about: {msg["text"]}')
 
                 sent_msg = None
                 # Aye, that's a ton of shitcode
                 if 'photos' in msg:
-                    sent_msg = context.bot.send_media_group(msg['chat_id'],
-                                                            msg['photos'],
-                                                            caption=msg['text'])[0]
+                    sent_msg = context.bot.send_media_group(
+                        msg['chat_id'], msg['photos'], caption=msg['text'])[0]
                 elif 'photo' in msg:
                     sent_msg = context.bot.send_photo(msg['chat_id'],
                                                       msg['photo'],
                                                       caption=msg['text'])
                 else:
-                    sent_msg = context.bot.send_message(msg['chat_id'],
-                                                        msg['text'])
+                    sent_msg = context.bot.send_message(
+                        msg['chat_id'], msg['text'])
                 if sent_msg is None:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
@@ -181,7 +185,7 @@ class CianBot:
                     self.scheduled_messages.append(msg)
                 elif 'document' in msg:
                     sent_msg.reply_document(msg['document'])
-            except Exception e:
+            except Exception as e:
                 logger.error(f'send_messages: {e}')
 
     def fetch_messages(self, update, context):
@@ -210,7 +214,8 @@ class CianBot:
                     logger.info(f'fetch_cian: status {res.status_code}')
                     html = res.text
                     flats = cian_parser.get_flatlist(html)
-                    logger.info('fetch_cian: fetched {len(flats)} flats from {url}')
+                    logger.info(
+                        'fetch_cian: fetched {len(flats)} flats from {url}')
                     for f in flats:
                         self.handle_new_flat(f)
                     self.send_messages(context)
