@@ -2,12 +2,14 @@ import argparse
 import collections
 import copy
 import datetime
+import hashlib
 import io
 import itertools
 import json
 import logging
 import os
 import os.path as osp
+from contextlib import ExitStack
 
 import attr
 import requests
@@ -62,6 +64,24 @@ def filter_metro(flat):
         logger.debug(
             f'Flat {flat.id} failed metro test. Metros: {flat.metros}')
     return ok
+
+
+def fetch_file(url):
+    # aye, it doesnt depend on basedir, i know
+    for i in range(5):
+        try:
+            if not osp.exists('photos'):
+                os.mkdir('photos')
+            filename = hashlib.sha256(url.encode('utf8')).hexdigest()
+            filename = osp.join('photos', filename)
+            if not osp.exists(filename):
+                res = requests.get(url)
+                with open(filename, 'wb') as out:
+                    for chunk in res.iter_content(chunk_size=1024):
+                        out.write(chunk)
+            return filename
+        except Exception as e:
+            logger.error(f'fetch_file: url={url} e={e}')
 
 
 @attr.s
@@ -181,24 +201,29 @@ class CianBot:
                 else:
                     sent_msg = context.bot.send_message(
                         msg['chat_id'], msg['text'])
+            except Exception as e:
+                logger.error(f'send_messages: {e}')
+                self.scheduled_messages.append(msg)
+            else:
                 if 'document' in msg and sent_msg is not None:
                     sent_msg.reply_text(msg['document'])
                 if 'photos' in msg and len(
                         msg['photos']) >= 2 and sent_msg is not None:
-                    sent_msg.reply_media_group(msg['chat_id'], [
-                        InputMediaPhoto(p)
-                        for p in msg['photos'][:N_PHOTOS_MAX]
-                    ],
-                                               caption=msg['text'],
-                                               quote=True)
+                    with ExitStack() as stack:
+                        photos = msg['photos'][:N_PHOTOS_MAX]
+                        photos = [fetch_file(p) for p in photos]
+                        photos = [
+                            stack.enter_context(open(p, 'rb')) for p in photos
+                        ]
+                        context.bot.send_media_group(
+                            msg['chat_id'],
+                            [InputMediaPhoto(p) for p in photos],
+                            timeout=120 * len(photos),
+                            reply_to_message_id=sent_msg.message_id)
                 if sent_msg is None:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
                     )
-                    raise Exception("Failed to send a message")
-            except Exception as e:
-                logger.error(f'send_messages: {e}')
-                self.scheduled_messages.append(msg)
 
     def get_json(self, update, context):
         flatid = context.args[0]
