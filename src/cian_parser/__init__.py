@@ -198,6 +198,13 @@ class Flat:
     numbers = attr.ib(type=dict)
     text = attr.ib()
 
+def js_offer_to_phones(js):
+    try:
+        return [f'+{o["countryCode"]}{o["number"]}' for o in js['phones']]
+    except:
+        logger.error("js_offer_to_phones: couldn't extract phones from json: {}".format(pprint.pformat(js)))
+        return list()
+
 
 def js_is_node(subtree):
     return isinstance(subtree, dict) and 'type' in subtree
