@@ -16,4 +16,4 @@
 /start
 ```
 
-![](screenshot001.jpg)
+![](https://i.imgur.com/17lUl3F.jpg)
