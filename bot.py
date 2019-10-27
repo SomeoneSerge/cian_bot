@@ -132,6 +132,7 @@ class CianBot:
             msg = dict(text=text)
             if len(flat.photos) > 0:
                 msg['photos'] = flat.photos
+                msg['photo'] = flat.photos[0]
                 msg['document'] = flat.pdf_link
             return msg
         except Exception as e:
@@ -170,9 +171,11 @@ class CianBot:
 
                 sent_msg = None
                 # Aye, that's a ton of shitcode
-                if 'photos' in msg:
+                if 'photos' in msg and len(msg['photos'] >= 2):
                     sent_msg = context.bot.send_media_group(
-                        msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos']], caption=msg['text'])[0]
+                            msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos'][:6]], caption=msg['text'])
+                    sent_msg = sent_msg[0]
+                    sent_msg = sent_msg.reply_text(msg['text'])
                 elif 'photo' in msg:
                     sent_msg = context.bot.send_photo(msg['chat_id'],
                                                       msg['photo'],
