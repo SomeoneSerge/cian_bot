@@ -1,21 +1,21 @@
 import argparse
 import collections
+import copy
 import datetime
+import io
 import itertools
 import json
 import logging
 import os
 import os.path as osp
-import logging
-import copy
 
 import attr
 import requests
 
 import cian_parser
 from cian_parser import get_flats
-from telegram.ext import CommandHandler, Updater
 from telegram import InputMediaPhoto
+from telegram.ext import CommandHandler, Updater
 
 logger = logging.getLogger('cian_bot')
 logger.setLevel(logging.DEBUG)
@@ -163,7 +163,9 @@ class CianBot:
             self.viewed[u].add(flat.id)
 
     def send_messages(self, context):
-        logger.info(f'send_message: about to send {len(self.scheduled_messages)} messages')
+        logger.info(
+            f'send_message: about to send {len(self.scheduled_messages)} messages'
+        )
         while len(self.scheduled_messages) > 0:
             try:
                 msg = self.scheduled_messages.popleft()
@@ -180,11 +182,14 @@ class CianBot:
                     sent_msg = context.bot.send_message(
                         msg['chat_id'], msg['text'])
                 if 'document' in msg and sent_msg is not None:
-                    sent_msg.reply_document(msg['document'])
-                if 'photos' in msg and len(msg['photos']) >= 2 and sent_msg is not None:
-                    sent_msg = sent_msg.reply_media_group(
-                            msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos'][:N_PHOTOS_MAX]], caption=msg['text'])
-                    sent_msg = sent_msg[0]
+                    sent_msg.reply_text(msg['document'])
+                if 'photos' in msg and len(
+                        msg['photos']) >= 2 and sent_msg is not None:
+                    context.bot.send_media_group(msg['chat_id'], [
+                        InputMediaPhoto(p)
+                        for p in msg['photos'][:N_PHOTOS_MAX]
+                    ],
+                                                 caption=msg['text'])
                 if sent_msg is None:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
@@ -193,6 +198,13 @@ class CianBot:
             except Exception as e:
                 logger.error(f'send_messages: {e}')
                 self.scheduled_messages.append(msg)
+
+    def get_json(self, update, context):
+        flatid = context.args[0]
+        flat = self.flatlist[flatid]
+        js = flat.json
+        js = io.StringIO(pprint.pformat(js))
+        update.message.reply_document(js)
 
     def fetch_messages(self, update, context):
         logger.info(f'{update.message.chat_id} asks for messages')
@@ -280,6 +292,7 @@ if __name__ == '__main__':
                            pass_job_queue=True,
                            pass_chat_data=True))
         dp.add_handler(CommandHandler('fetchMessages', state.fetch_messages))
+        dp.add_handler(CommandHandler('json', state.get_json))
         updater.start_polling()
         updater.idle()
     finally:
