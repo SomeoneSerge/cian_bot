@@ -15,6 +15,7 @@ import requests
 import cian_parser
 from cian_parser import get_flats
 from telegram.ext import CommandHandler, Updater
+from telegram import InputMediaPhoto
 
 logger = logging.getLogger('cian_bot')
 logger.setLevel(logging.DEBUG)
@@ -171,7 +172,7 @@ class CianBot:
                 # Aye, that's a ton of shitcode
                 if 'photos' in msg:
                     sent_msg = context.bot.send_media_group(
-                        msg['chat_id'], msg['photos'], caption=msg['text'])[0]
+                        msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos']], caption=msg['text'])[0]
                 elif 'photo' in msg:
                     sent_msg = context.bot.send_photo(msg['chat_id'],
                                                       msg['photo'],
