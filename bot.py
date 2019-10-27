@@ -54,8 +54,8 @@ def filter_price_per_person(flat):
 
 def filter_metro(flat):
     ok = any(m.lower() in METRO
-                 for m in flat.metros) and not any(m.lower() in METRO_BLACKLIST
-                                                   for m in flat.metros)
+             for m in flat.metros) and not any(m.lower() in METRO_BLACKLIST
+                                               for m in flat.metros)
     if not ok:
         logger.debug(
             f'Flat {flat.id} failed metro test. Metros: {flat.metros}')
@@ -67,6 +67,7 @@ class CianStateSerializable:
     flatlist = attr.ib(type=dict)
     flat_details = attr.ib(type=dict)
     viewed = attr.ib(type=dict)
+    observed_urls = attr.ib(type=list)
     scheduled_messages = attr.ib(type=list)
 
 
@@ -76,6 +77,7 @@ class CianBot:
         self.flat_details = dict()
         self.viewed = collections.defaultdict(set)  # chat_id -> set[int]
         self.scheduled_messages = collections.deque()
+        self.observed_urls = list()
 
     @property
     def filters(self):
@@ -91,7 +93,8 @@ class CianBot:
                                           flat_details=self.flat_details,
                                           viewed=self.viewed,
                                           scheduled_messages=list(
-                                              self.scheduled_messages))), f)
+                                              self.scheduled_messages),
+                                          observed_urls=self.observed_urls)), f)
 
     @staticmethod
     def from_directory(basepath):
@@ -102,6 +105,7 @@ class CianBot:
         self.flat_details.update(state['flat_details'])
         self.viewed.update({a: set(b) for a, b in state['viewed'].items()})
         self.scheduled_messages.extend(state['scheduled_messages'])
+        self.observed_urls.extend(state['observed_urls'])
         return self
 
     def start(self, update, context):
@@ -148,8 +152,8 @@ class CianBot:
 
     def send_messages(self, context):
         while len(self.scheduled_messages) > 0:
-            logger.debug(f'Notifying {msg["chat_id"]} about: {msg["text"]}')
             msg = self.scheduled_messages.popleft()
+            logger.debug(f'Notifying {msg["chat_id"]} about: {msg["text"]}')
             if 'photo' in msg:
                 context.bot.send_photo(msg['chat_id'],
                                        msg['photo'],
@@ -172,31 +176,39 @@ class CianBot:
         logger.info('Messages sent')
 
     def fetch_cian(self, context):
-        logger.info('Fetching cian')
-        for p in range(1, 20):
-            with requests.Session() as s:
-                html = cian_parser.get_flatlist_html(s, p, 100_000)
-            flats = cian_parser.get_flatlist(html)
-            for f in flats:
-                self.handle_new_flat(f)
-            logger.info(f'Fetched page {p}')
-            logger.info('Sending messages after fetch')
-            self.send_messages(context)
-            logger.info('Messages sent')
+        if len(self.observed_urls) == 0:
+            logger.info('fetch_cian: no URLs to fetch')
+            return
+        with requests.Session() as s:
+            for url in self.observed_urls:
+                try:
+                    logger.info(f'fetch_cian: fetching {url}')
+                    res = s.get(url)
+                    logger.info(f'fetch_cian: status {res.status_code}')
+                    html = res.text
+                    flats = cian_parser.get_flatlist(html)
+                    for f in flats:
+                        self.handle_new_flat(f)
+                    self.send_messages(context)
+                    logger.info('fetch_cian: messages sent')
+                except Exception as e:
+                    logger.fatal(f'fetch_cian: failed fetching flats from {url}; error: {e}')
         logger.info('Saving backup')
         self.save('.cian-backup')
         logger.info('Saved backup')
-    def fetch_cian_url(self, context):
-        with requests.Session() as s:
-            html = s.get(url)
-        flats = cian_parser.get_flatlist(html)
-        for f in flats:
-            self.handle_new_flat(f)
-        logger.info(f'Fetched page {p}')
-        logger.info('Sending messages after fetch')
-        self.send_messages(context)
-        logger.info('Messages sent')
 
+    def observe_url(self, update, context):
+        if len(self.args) != 1:
+            update.message.reply('Invalid URL')
+            logger.error(f'observe_url: not a valid url {url}')
+            return
+        url = context.args[0]
+        self.observed_urls = sorted(set(self.observed_urls + [url]))
+        logger.info('observe_url: scheduled cian_fetch')
+        due = 5
+        context.job_queue.run_once(self.fetch_cian, due, context=update.message.chat_id)
+        update.message.reply(f'Observing {url}')
+        logger.info(f'observe_url: Observing {url}')
 
 
 if __name__ == '__main__':
@@ -218,9 +230,11 @@ if __name__ == '__main__':
 
     try:
         job = updater.job_queue
-        job.run_repeating(state.fetch_cian, datetime.timedelta(minutes=180), 10)
+        job.run_repeating(state.fetch_cian, datetime.timedelta(minutes=180),
+                          10)
         dp.add_handler(CommandHandler('start', state.start))
-        dp.add_handler(CommandHandler('fetch', state.fetch_messages))
+        dp.add_handler(CommandHandler('observe', state.observe_url, pass_args=True, pass_job_queue=True, pass_chat_data=True))
+        dp.add_handler(CommandHandler('fetchMessages', state.fetch_messages))
         updater.start_polling()
         updater.idle()
     finally:
