@@ -27,6 +27,7 @@ log_to_stdout.setLevel(logging.INFO)
 logger.addHandler(log_to_stdout)
 
 SAVE_FILE = 'save.json'
+N_PHOTOS_MAX = 5
 
 METRO = [
     'Достоевская', 'Проспект Мира', 'Сухаревская', 'Цветной бульвар',
@@ -171,25 +172,24 @@ class CianBot:
 
                 sent_msg = None
                 # Aye, that's a ton of shitcode
-                if 'photos' in msg and len(msg['photos']) >= 2:
-                    sent_msg = context.bot.send_media_group(
-                            msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos'][:6]], caption=msg['text'])
-                    sent_msg = sent_msg[0]
-                    sent_msg = sent_msg.reply_text(msg['text'])
-                elif 'photo' in msg:
+                if 'photo' in msg:
                     sent_msg = context.bot.send_photo(msg['chat_id'],
                                                       msg['photo'],
                                                       caption=msg['text'])
                 else:
                     sent_msg = context.bot.send_message(
                         msg['chat_id'], msg['text'])
+                if 'document' in msg and sent_msg is not None:
+                    sent_msg.reply_document(msg['document'])
+                if 'photos' in msg and len(msg['photos']) >= 2 and sent_msg is not None:
+                    sent_msg = sent_msg.reply_media_group(
+                            msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos'][:N_PHOTOS_MAX]], caption=msg['text'])
+                    sent_msg = sent_msg[0]
                 if sent_msg is None:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
                     )
                     raise Exception("Failed to send a message")
-                elif 'document' in msg:
-                    sent_msg.reply_document(msg['document'])
             except Exception as e:
                 logger.error(f'send_messages: {e}')
                 self.scheduled_messages.append(msg)
