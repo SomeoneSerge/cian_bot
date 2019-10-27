@@ -171,7 +171,7 @@ class CianBot:
 
                 sent_msg = None
                 # Aye, that's a ton of shitcode
-                if 'photos' in msg and len(msg['photos'] >= 2):
+                if 'photos' in msg and len(msg['photos']) >= 2:
                     sent_msg = context.bot.send_media_group(
                             msg['chat_id'], [InputMediaPhoto(p) for p in msg['photos'][:6]], caption=msg['text'])
                     sent_msg = sent_msg[0]
