@@ -216,7 +216,7 @@ class CianBot:
                     html = res.text
                     flats = cian_parser.get_flatlist(html)
                     logger.info(
-                        'fetch_cian: fetched {len(flats)} flats from {url}')
+                        f'fetch_cian: fetched {len(flats)} flats from {url}')
                     for f in flats:
                         self.handle_new_flat(f)
                     self.send_messages(context)

@@ -201,8 +201,8 @@ class Flat:
 def js_offer_to_phones(js):
     try:
         return [f'+{o["countryCode"]}{o["number"]}' for o in js['phones']]
-    except:
-        logger.error("js_offer_to_phones: couldn't extract phones from json: {}".format(pprint.pformat(js)))
+    except Exception as e:
+        logger.error("js_offer_to_phones: error {e} while extracting phones from: {}".format(pprint.pformat(js)))
         return list()
 
 
