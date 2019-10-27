@@ -89,12 +89,12 @@ class CianBot:
         with open(osp.join(basepath, 'state.json'), 'w') as f:
             json.dump(
                 attr.asdict(
-                    CianStateSerializable(flatlist=self.flatlist,
-                                          flat_details=self.flat_details,
-                                          viewed=self.viewed,
-                                          scheduled_messages=list(
-                                              self.scheduled_messages),
-                                          observed_urls=self.observed_urls)), f)
+                    CianStateSerializable(
+                        flatlist=self.flatlist,
+                        flat_details=self.flat_details,
+                        viewed=self.viewed,
+                        scheduled_messages=list(self.scheduled_messages),
+                        observed_urls=self.observed_urls)), f)
 
     @staticmethod
     def from_directory(basepath):
@@ -192,21 +192,25 @@ class CianBot:
                     self.send_messages(context)
                     logger.info('fetch_cian: messages sent')
                 except Exception as e:
-                    logger.fatal(f'fetch_cian: failed fetching flats from {url}; error: {e}')
+                    logger.fatal(
+                        f'fetch_cian: failed fetching flats from {url}; error: {e}'
+                    )
         logger.info('Saving backup')
         self.save('.cian-backup')
         logger.info('Saved backup')
 
     def observe_url(self, update, context):
-        if len(self.args) != 1:
-            update.message.reply('Invalid URL')
-            logger.error(f'observe_url: not a valid url {url}')
+        if len(context.args) != 1:
+            update.message.reply('Synopsis: /observe https://cian.ru/...')
+            logger.error(f'observe_url: invalid number of arguments; arguments are: {context.args}')
             return
         url = context.args[0]
         self.observed_urls = sorted(set(self.observed_urls + [url]))
         logger.info('observe_url: scheduled cian_fetch')
         due = 5
-        context.job_queue.run_once(self.fetch_cian, due, context=update.message.chat_id)
+        context.job_queue.run_once(self.fetch_cian,
+                                   due,
+                                   context=update.message.chat_id)
         update.message.reply(f'Observing {url}')
         logger.info(f'observe_url: Observing {url}')
 
@@ -233,7 +237,12 @@ if __name__ == '__main__':
         job.run_repeating(state.fetch_cian, datetime.timedelta(minutes=180),
                           10)
         dp.add_handler(CommandHandler('start', state.start))
-        dp.add_handler(CommandHandler('observe', state.observe_url, pass_args=True, pass_job_queue=True, pass_chat_data=True))
+        dp.add_handler(
+            CommandHandler('observe',
+                           state.observe_url,
+                           pass_args=True,
+                           pass_job_queue=True,
+                           pass_chat_data=True))
         dp.add_handler(CommandHandler('fetchMessages', state.fetch_messages))
         updater.start_polling()
         updater.idle()
