@@ -182,11 +182,12 @@ class CianBot:
                     logger.error(
                         f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
                     )
-                    self.scheduled_messages.append(msg)
+                    raise Exception("Failed to send a message")
                 elif 'document' in msg:
                     sent_msg.reply_document(msg['document'])
             except Exception as e:
                 logger.error(f'send_messages: {e}')
+                self.scheduled_messages.append(msg)
 
     def fetch_messages(self, update, context):
         logger.info(f'{update.message.chat_id} asks for messages')
