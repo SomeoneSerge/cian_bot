@@ -16,7 +16,7 @@ import requests
 
 import cian_parser
 from cian_parser import get_flats
-from telegram import InputMediaPhoto
+from telegram import InputFile, InputMediaPhoto
 from telegram.ext import CommandHandler, Updater
 
 logger = logging.getLogger('cian_bot')
@@ -226,11 +226,13 @@ class CianBot:
                     )
 
     def get_json(self, update, context):
+        logger.info(f'get_json {context.args}')
         flatid = context.args[0]
         flat = self.flatlist[flatid]
         js = flat.json
-        js = io.StringIO(pprint.pformat(js))
-        update.message.reply_document(js)
+        js = io.BytesIO(pprint.pformat(js).encode('utf8'))
+        doc = InputFile(js, filename=f'{flatid}.json')
+        update.message.reply_document(doc)
 
     def fetch_messages(self, update, context):
         logger.info(f'{update.message.chat_id} asks for messages')
@@ -318,7 +320,12 @@ if __name__ == '__main__':
                            pass_job_queue=True,
                            pass_chat_data=True))
         dp.add_handler(CommandHandler('fetchMessages', state.fetch_messages))
-        dp.add_handler(CommandHandler('json', state.get_json))
+        dp.add_handler(
+            CommandHandler('json',
+                           state.get_json,
+                           pass_args=True,
+                           pass_job_queue=True,
+                           pass_chat_data=True))
         updater.start_polling()
         updater.idle()
     finally:
