@@ -147,6 +147,7 @@ class CianBot:
         self.viewed.update({a: set(b) for a, b in state['viewed'].items()})
         self.scheduled_messages.extend(state['scheduled_messages'])
         self.observed_urls.extend(state['observed_urls'])
+        logger.info(f'from_directory: loaded {len(state["flatlist"])} flatlistitems, {len(state["scheduled_messages"])} scheduled messages, {len(state["observed_urls"])} observed urls')
         return self
 
     def start(self, update, context):
