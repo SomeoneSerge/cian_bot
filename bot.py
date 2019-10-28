@@ -80,6 +80,10 @@ def filter_metro(flat):
     return ok
 
 
+def filter_monthly(flat):
+    return True
+
+
 def fetch_file(url):
     # aye, it doesnt depend on basedir, i know
     for i in range(5):
@@ -251,9 +255,9 @@ class CianBot:
         logger.debug(f'get_json {context.args}: extracted json')
         js = pprint.pformat(js).encode('utf8')
         logger.debug(f'get_json {context.args}: encoded into bytes')
-        doc = InputFile(input_file_content=js, filename=f'{flatid}.json')
+        doc = io.BytesIO(js)
         logger.debug(f'get_json {context.args}: created InputFile')
-        update.message.reply_document(doc)
+        update.message.reply_document(document=doc, filename=f'{flatid}.json')
         logger.debug(f'get_json {context.args}: send a reply')
 
     def fetch_messages(self, update, context):
