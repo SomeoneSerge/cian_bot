@@ -237,7 +237,8 @@ class CianBot:
         js = flat.json
         logger.debug(f'get_json {context.args}: extracted json')
         js = pprint.pformat(js).encode('utf8')
-        doc = InputFile(js, filename=f'{flatid}.json')
+        logger.debug(f'get_json {context.args}: encoded into bytes')
+        doc = InputFile(input_file_content=js, filename=f'{flatid}.json')
         logger.debug(f'get_json {context.args}: created InputFile')
         update.message.reply_document(doc)
         logger.debug(f'get_json {context.args}: send a reply')
