@@ -80,7 +80,10 @@ def filter_metro(flat):
 
 
 def filter_monthly(flat):
-    return True
+    try:
+        return flat.json['bargainTerms']['paymentPeriod'] == 'monthly'
+    except:
+        return True
 
 
 def fetch_file(url):
@@ -122,7 +125,7 @@ class CianBot:
 
     @property
     def filters(self):
-        return [filter_price_per_person, filter_metro]
+        return [filter_price_per_person, filter_metro, filter_monthly]
 
     def save(self, basepath):
         if not osp.exists(basepath):
