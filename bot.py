@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import os.path as osp
-import pprint
 from contextlib import ExitStack
 
 import attr
@@ -248,6 +247,7 @@ class CianBot:
         flatid = context.args[0]
         flatid = int(flatid)
         if not flatid in self.flatlist:
+            logger.error(f'{flatid} not in flatlist')
             pass  # TODO: schedule querying the flat page
         flat = self.flatlist[flatid]
         logger.debug(f'get_json {context.args}: flat found')
