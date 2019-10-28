@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import os.path as osp
+import pprint
 from contextlib import ExitStack
 
 import attr
@@ -230,13 +231,12 @@ class CianBot:
         flatid = context.args[0]
         flatid = int(flatid)
         if not flatid in self.flatlist:
-            pass # TODO: schedule querying the flat page
+            pass  # TODO: schedule querying the flat page
         flat = self.flatlist[flatid]
         logger.debug(f'get_json {context.args}: flat found')
         js = flat.json
         logger.debug(f'get_json {context.args}: extracted json')
-        js = io.BytesIO(pprint.pformat(js).encode('utf8'))
-        logger.debug(f'get_json {context.args}: encoded into bytes')
+        js = pprint.pformat(js).encode('utf8')
         doc = InputFile(js, filename=f'{flatid}.json')
         logger.debug(f'get_json {context.args}: created InputFile')
         update.message.reply_document(doc)
