@@ -253,7 +253,7 @@ class CianBot:
         logger.debug(f'get_json {context.args}: flat found')
         js = flat.json
         logger.debug(f'get_json {context.args}: extracted json')
-        js = pprint.pformat(js).encode('utf8')
+        js = json.dumps(js).encode('utf8')
         logger.debug(f'get_json {context.args}: encoded into bytes')
         doc = io.BytesIO(js)
         logger.debug(f'get_json {context.args}: created InputFile')
