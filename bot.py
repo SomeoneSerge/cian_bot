@@ -228,11 +228,19 @@ class CianBot:
     def get_json(self, update, context):
         logger.info(f'get_json {context.args}')
         flatid = context.args[0]
+        flatid = int(flatid)
+        if not flatid in self.flatlist:
+            pass # TODO: schedule querying the flat page
         flat = self.flatlist[flatid]
+        logger.debug(f'get_json {context.args}: flat found')
         js = flat.json
+        logger.debug(f'get_json {context.args}: extracted json')
         js = io.BytesIO(pprint.pformat(js).encode('utf8'))
+        logger.debug(f'get_json {context.args}: encoded into bytes')
         doc = InputFile(js, filename=f'{flatid}.json')
+        logger.debug(f'get_json {context.args}: created InputFile')
         update.message.reply_document(doc)
+        logger.debug(f'get_json {context.args}: send a reply')
 
     def fetch_messages(self, update, context):
         logger.info(f'{update.message.chat_id} asks for messages')
