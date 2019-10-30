@@ -205,46 +205,54 @@ class CianBot:
 
     def send_messages(self, context):
         logger.info(
-            f'send_message: about to send {len(self.scheduled_messages)} messages'
+            f'send_messages: about to send {len(self.scheduled_messages)} messages'
         )
-        while len(self.scheduled_messages) > 0:
-            try:
-                msg = self.scheduled_messages.popleft()
-                logger.debug(
-                    f'Notifying {msg["chat_id"]} about: {msg["text"]}')
+        if len(self.scheduled_messages) == 0:
+            logger.info('send_messages: no messages scheduled')
+            return
+        try:
+            msg = self.scheduled_messages.popleft()
+            logger.debug(
+                f'Notifying {msg["chat_id"]} about: {msg["text"]}')
 
-                sent_msg = None
-                # Aye, that's a ton of shitcode
-                if 'photo' in msg:
-                    sent_msg = context.bot.send_photo(msg['chat_id'],
-                                                      msg['photo'],
-                                                      caption=msg['text'])
-                else:
-                    sent_msg = context.bot.send_message(
-                        msg['chat_id'], msg['text'])
-            except Exception as e:
-                logger.error(f'send_messages: {e}')
-                self.scheduled_messages.append(msg)
+            sent_msg = None
+            # Aye, that's a ton of shitcode
+            if 'photo' in msg:
+                sent_msg = context.bot.send_photo(msg['chat_id'],
+                                                  msg['photo'],
+                                                  caption=msg['text'])
             else:
-                if 'document' in msg and sent_msg is not None:
-                    sent_msg.reply_text(msg['document'])
-                if 'photos' in msg and len(
-                        msg['photos']) >= 2 and sent_msg is not None:
-                    with ExitStack() as stack:
-                        photos = msg['photos'][:N_PHOTOS_MAX]
-                        photos = [fetch_file(p) for p in photos]
-                        photos = [
-                            stack.enter_context(open(p, 'rb')) for p in photos
-                        ]
-                        context.bot.send_media_group(
-                            msg['chat_id'],
-                            [InputMediaPhoto(p) for p in photos],
-                            timeout=120 * len(photos),
-                            reply_to_message_id=sent_msg.message_id)
-                if sent_msg is None:
-                    logger.error(
-                        f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
-                    )
+                sent_msg = context.bot.send_message(
+                    msg['chat_id'], msg['text'])
+        except KeyboardInterrupt:
+            logger.error(f'send_messages: keyboard interrupt, putting message back to queue and pushing Exception forward')
+            self.scheduled_messages.append(msg)
+            raise
+        except Exception as e:
+            logger.error(f'send_messages: {e}')
+            self.scheduled_messages.append(msg)
+        else:
+            if 'document' in msg and sent_msg is not None:
+                sent_msg.reply_text(msg['document'])
+            if 'photos' in msg and len(
+                    msg['photos']) >= 2 and sent_msg is not None:
+                with ExitStack() as stack:
+                    photos = msg['photos'][:N_PHOTOS_MAX]
+                    photos = [fetch_file(p) for p in photos]
+                    photos = [
+                        stack.enter_context(open(p, 'rb')) for p in photos
+                    ]
+                    context.bot.send_media_group(
+                        msg['chat_id'],
+                        [InputMediaPhoto(p) for p in photos],
+                        timeout=120 * len(photos),
+                        reply_to_message_id=sent_msg.message_id)
+            if sent_msg is None:
+                logger.error(
+                    f'Failed to send message to {msg["chat_id"]} with content {msg["text"]}'
+                )
+        if len(self.scheduled_messages) > 0:
+            context.job_queue.run_once(self.send_messages, 0.0, context)
 
     def get_json(self, update, context):
         logger.info(f'get_json {context.args}')
@@ -275,7 +283,7 @@ class CianBot:
             msg['chat_id'] = update.message.chat_id
             self.scheduled_messages.append(msg)
         logger.info('Sending messages as requested')
-        self.send_messages()
+        context.job_queue.run_once(self.send_messages, 0.0, context)
         logger.info('Messages sent')
 
     def fetch_cian(self, context):
@@ -294,7 +302,7 @@ class CianBot:
                         f'fetch_cian: fetched {len(flats)} flats from {url}')
                     for f in flats:
                         self.handle_new_flat(f)
-                    self.send_messages(context)
+                    context.job_queue.run_once(self.send_messages, 0, context)
                 except Exception as e:
                     logger.fatal(
                         f'fetch_cian: failed fetching flats from {url}; error: {e}'
